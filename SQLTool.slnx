@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="SQLTool.Tests/SQLTool.Tests.csproj" />
+  <Project Path="SQLTool/SQLTool.csproj" />
+</Solution>
