@@ -1,0 +1,26 @@
+{
+  "queries": [
+    {
+      "id": "orders-by-date",
+      "name": "Get orders by date range",
+      "description": "Returns all orders placed between two dates",
+      "allowedEnvironments": ["PROD", "TEST"],
+      "sql": "SELECT TOP 10000 OrderID, CustomerName, OrderDate, TotalAmount FROM Orders WHERE OrderDate BETWEEN @StartDate AND @EndDate ORDER BY OrderDate DESC",
+      "enabled": true,
+      "parameters": [
+        {
+          "name": "StartDate",
+          "label": "Start date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "EndDate",
+          "label": "End date",
+          "type": "date",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

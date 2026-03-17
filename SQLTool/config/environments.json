@@ -1,0 +1,23 @@
+{
+  "environments": [
+    {
+      "name": "PROD",
+      "databases": [
+        { "id": "prod-db1", "label": "CustomerDB_NL", "connectionStringKey": "PROD_CustomerDB_NL", "queryTimeoutSeconds": 30 },
+        { "id": "prod-db2", "label": "CustomerDB_BE", "connectionStringKey": "PROD_CustomerDB_BE", "queryTimeoutSeconds": 30 }
+      ]
+    },
+    {
+      "name": "TEST",
+      "databases": [
+        { "id": "test-db", "label": "TestDB", "connectionStringKey": "TEST_TestDB", "queryTimeoutSeconds": 60 }
+      ]
+    },
+    {
+      "name": "DEV",
+      "databases": [
+        { "id": "dev-db", "label": "DevDB", "connectionStringKey": "DEV_DevDB", "queryTimeoutSeconds": 120 }
+      ]
+    }
+  ]
+}
