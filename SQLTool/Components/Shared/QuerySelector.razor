@@ -1,0 +1,28 @@
+@* SQLTool/Components/Shared/QuerySelector.razor *@
+@using SQLTool.Models
+
+<div class="query-selector">
+    <input type="text" placeholder="Search queries..." @bind="searchTerm" @bind:event="oninput" class="search-input" />
+    <div class="query-list">
+        @foreach (var q in Filtered)
+        {
+            <div class="query-item @(q.Id == SelectedId ? "selected" : "")" @onclick="() => OnSelect.InvokeAsync(q)">
+                <strong>@q.Name</strong>
+                @if (!string.IsNullOrEmpty(q.Description))
+                {
+                    <small>@q.Description</small>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<QueryDefinition> Queries { get; set; } = new();
+    [Parameter] public string? SelectedId { get; set; }
+    [Parameter] public EventCallback<QueryDefinition> OnSelect { get; set; }
+
+    private string searchTerm = "";
+    private IEnumerable<QueryDefinition> Filtered =>
+        Queries.Where(q => string.IsNullOrEmpty(searchTerm) || q.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+}

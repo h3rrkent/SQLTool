@@ -1,0 +1,56 @@
+@* SQLTool/Components/Shared/ParameterForm.razor *@
+@using SQLTool.Models
+
+@foreach (var param in Parameters)
+{
+    <div class="param-field">
+        <label>@param.Label @(param.Required ? "*" : "")</label>
+        @switch (param.Type)
+        {
+            case "date":
+                <input type="date" value="@GetValue(param.Name)"
+                       @onchange="e => SetValue(param.Name, e.Value?.ToString())" />
+                break;
+            case "number":
+                <input type="number" value="@GetValue(param.Name)"
+                       min="@param.Min" max="@param.Max"
+                       @onchange="e => SetValue(param.Name, e.Value?.ToString())" />
+                break;
+            case "boolean":
+                <select @onchange="e => SetValue(param.Name, e.Value?.ToString())">
+                    <option value="false">No</option>
+                    <option value="true">Yes</option>
+                </select>
+                break;
+            case "dropdown":
+                <select @onchange="e => SetValue(param.Name, e.Value?.ToString())">
+                    <option value="">-- Select --</option>
+                    @foreach (var opt in param.Options)
+                    {
+                        <option value="@opt.Value">@opt.Label</option>
+                    }
+                </select>
+                break;
+            default:
+                <input type="text" maxlength="500" value="@GetValue(param.Name)"
+                       @onchange="e => SetValue(param.Name, e.Value?.ToString())" />
+                break;
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public List<QueryParameter> Parameters { get; set; } = new();
+    [Parameter] public List<SQLTool.Models.ParameterValue> Values { get; set; } = new();
+    [Parameter] public EventCallback<List<SQLTool.Models.ParameterValue>> ValuesChanged { get; set; }
+
+    private string? GetValue(string name) => Values.FirstOrDefault(v => v.Name == name)?.Value;
+
+    private void SetValue(string name, string? value)
+    {
+        var existing = Values.FirstOrDefault(v => v.Name == name);
+        if (existing is not null) existing.Value = value;
+        else Values.Add(new SQLTool.Models.ParameterValue { Name = name, Value = value });
+        ValuesChanged.InvokeAsync(Values);
+    }
+}

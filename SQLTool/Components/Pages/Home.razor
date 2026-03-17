@@ -4,6 +4,7 @@
 @using SQLTool.Models
 @using SQLTool.Services
 @inject IConfigService ConfigService
+@inject IQueryEngine QueryEngine
 
 <PageTitle>SQLTool</PageTitle>
 
@@ -32,6 +33,34 @@ else if (_currentStep == 1)
                          OnSelect="SelectDatabase" />
     </div>
 }
+else if (_currentStep == 2)
+{
+    <div class="step-content step3">
+        <ProdWarningBanner Show="@(_selectedEnv!.Name == "PROD")" />
+        <div class="step3-layout">
+            <div class="query-panel">
+                <h3>Select Query</h3>
+                <QuerySelector Queries="@_queries" SelectedId="@_selectedQuery?.Id" OnSelect="SelectQuery" />
+            </div>
+            @if (_selectedQuery is not null)
+            {
+                <div class="params-panel">
+                    <h3>Parameters</h3>
+                    <ParameterForm Parameters="@_selectedQuery.Parameters" @bind-Values="_paramValues" />
+                    @if (_validationErrors.Any())
+                    {
+                        <ul class="validation-errors">
+                            @foreach (var e in _validationErrors) { <li>@e</li> }
+                        </ul>
+                    }
+                    <button class="run-btn" @onclick="RunQuery" disabled="@_isRunning">
+                        @(_isRunning ? "Running..." : "▶ Run Query")
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
 
 @code {
     private List<string> _steps = new() { "Environment", "Database", "Query", "Results" };
@@ -39,6 +68,12 @@ else if (_currentStep == 1)
     private List<EnvironmentConfig> _environments = new();
     private EnvironmentConfig? _selectedEnv;
     private DatabaseEntry? _selectedDb;
+    private List<QueryDefinition> _queries = new();
+    private QueryDefinition? _selectedQuery;
+    private List<SQLTool.Models.ParameterValue> _paramValues = new();
+    private List<string> _validationErrors = new();
+    private bool _isRunning = false;
+    private SQLTool.Models.QueryResult? _queryResult;
 
     protected override void OnInitialized()
     {
@@ -55,7 +90,42 @@ else if (_currentStep == 1)
     private void SelectDatabase(DatabaseEntry db)
     {
         _selectedDb = db;
+        _queries = ConfigService.GetQueries()
+            .Where(q => q.AllowedEnvironments.Contains(_selectedEnv!.Name, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+        _selectedQuery = null;
+        _paramValues = new();
+        _validationErrors = new();
         _currentStep = 2;
+    }
+
+    private void SelectQuery(QueryDefinition q)
+    {
+        _selectedQuery = q;
+        _paramValues = new();
+        _validationErrors = new();
+    }
+
+    private async Task RunQuery()
+    {
+        _validationErrors = new();
+        var validation = QueryEngine.ValidateParameters(_selectedQuery!, _paramValues);
+        if (!validation.IsValid)
+        {
+            _validationErrors = validation.Errors;
+            return;
+        }
+        // Server-side allowedEnvironments check
+        if (!_selectedQuery!.AllowedEnvironments.Contains(_selectedEnv!.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            _validationErrors = new() { "This query is not allowed in the selected environment." };
+            return;
+        }
+        _isRunning = true;
+        StateHasChanged();
+        _queryResult = await QueryEngine.ExecuteAsync(_selectedQuery!, _selectedDb!, _paramValues);
+        _isRunning = false;
+        _currentStep = 3;
     }
 
     private void GoToStep(int step)
