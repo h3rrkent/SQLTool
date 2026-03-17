@@ -1,0 +1,24 @@
+@* SQLTool/Components/Shared/DatabaseSelector.razor *@
+@using SQLTool.Models
+
+<div class="db-selector">
+    <input type="text" placeholder="Search database..." @bind="searchTerm" @bind:event="oninput" class="search-input" />
+    <div class="db-list">
+        @foreach (var db in Filtered)
+        {
+            <div class="db-item @(db.Id == SelectedId ? "selected" : "")" @onclick="() => OnSelect.InvokeAsync(db)">
+                @db.Label
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<DatabaseEntry> Databases { get; set; } = new();
+    [Parameter] public string? SelectedId { get; set; }
+    [Parameter] public EventCallback<DatabaseEntry> OnSelect { get; set; }
+
+    private string searchTerm = "";
+    private IEnumerable<DatabaseEntry> Filtered =>
+        Databases.Where(d => string.IsNullOrEmpty(searchTerm) || d.Label.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+}

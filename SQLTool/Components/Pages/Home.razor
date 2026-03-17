@@ -1,7 +1,65 @@
-﻿@page "/"
+@* SQLTool/Components/Pages/Home.razor *@
+@page "/"
+@attribute [Authorize(Policy = "UserPolicy")]
+@using SQLTool.Models
+@using SQLTool.Services
+@inject IConfigService ConfigService
 
-<PageTitle>Home</PageTitle>
+<PageTitle>SQLTool</PageTitle>
 
-<h1>Hello, world!</h1>
+<StepBar Steps="@_steps" CurrentStep="@_currentStep" OnStepClick="GoToStep" />
 
-Welcome to your new app.
+@if (_currentStep == 0)
+{
+    <div class="step-content">
+        <h3>Select Environment</h3>
+        <div class="env-buttons">
+            @foreach (var env in _environments)
+            {
+                <button class="env-btn @(_selectedEnv?.Name == env.Name ? "active" : "")"
+                        @onclick="() => SelectEnvironment(env)">
+                    @env.Name
+                </button>
+            }
+        </div>
+    </div>
+}
+else if (_currentStep == 1)
+{
+    <div class="step-content">
+        <h3>Select Database — @_selectedEnv!.Name</h3>
+        <DatabaseSelector Databases="@_selectedEnv.Databases" SelectedId="@_selectedDb?.Id"
+                         OnSelect="SelectDatabase" />
+    </div>
+}
+
+@code {
+    private List<string> _steps = new() { "Environment", "Database", "Query", "Results" };
+    private int _currentStep = 0;
+    private List<EnvironmentConfig> _environments = new();
+    private EnvironmentConfig? _selectedEnv;
+    private DatabaseEntry? _selectedDb;
+
+    protected override void OnInitialized()
+    {
+        _environments = ConfigService.GetEnvironments().ToList();
+    }
+
+    private void SelectEnvironment(EnvironmentConfig env)
+    {
+        _selectedEnv = env;
+        _selectedDb = null;
+        _currentStep = 1;
+    }
+
+    private void SelectDatabase(DatabaseEntry db)
+    {
+        _selectedDb = db;
+        _currentStep = 2;
+    }
+
+    private void GoToStep(int step)
+    {
+        if (step < _currentStep) _currentStep = step;
+    }
+}
