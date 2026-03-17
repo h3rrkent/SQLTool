@@ -1,0 +1,28 @@
+@* SQLTool/Components/Pages/Admin/Environments.razor *@
+@page "/admin/environments"
+@attribute [Authorize(Policy = "AdminPolicy")]
+@using SQLTool.Services
+@inject IConfigService ConfigService
+
+<h2>Environments</h2>
+<p class="hint">Connection strings are resolved from environment variables or Azure Key Vault — not stored here.</p>
+
+@foreach (var env in ConfigService.GetEnvironments())
+{
+    <div class="env-section">
+        <h3>@env.Name <span class="db-count">@env.Databases.Count database(s)</span></h3>
+        <table class="env-table">
+            <thead><tr><th>Label</th><th>Connection String Key</th><th>Timeout</th></tr></thead>
+            <tbody>
+                @foreach (var db in env.Databases)
+                {
+                    <tr>
+                        <td>@db.Label</td>
+                        <td><code>@db.ConnectionStringKey</code></td>
+                        <td>@db.QueryTimeoutSeconds s</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
