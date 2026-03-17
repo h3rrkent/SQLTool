@@ -61,6 +61,13 @@ else if (_currentStep == 2)
         </div>
     </div>
 }
+else if (_currentStep == 3)
+{
+    <div class="step-content">
+        <ProdWarningBanner Show="@(_selectedEnv!.Name == "PROD")" />
+        <ResultsTable Result="_queryResult" QueryName="@(_selectedQuery?.Name ?? "results")" />
+    </div>
+}
 
 @code {
     private List<string> _steps = new() { "Environment", "Database", "Query", "Results" };
