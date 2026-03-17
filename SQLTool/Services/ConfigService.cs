@@ -90,10 +90,19 @@ public class ConfigService : IConfigService
 
     private void PersistQueries()
     {
+        Directory.CreateDirectory(_configDir);
         var path = Path.Combine(_configDir, "queries.json");
         var tmp = path + ".tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(new QueryConfigRoot { Queries = _queries }, _jsonOptions));
-        File.Move(tmp, path, overwrite: true);
+        try
+        {
+            File.WriteAllText(tmp, JsonSerializer.Serialize(new QueryConfigRoot { Queries = _queries }, _jsonOptions));
+            File.Move(tmp, path, overwrite: true);
+        }
+        catch
+        {
+            if (File.Exists(tmp)) File.Delete(tmp);
+            throw;
+        }
     }
 
     private class QueryConfigRoot { public List<QueryDefinition> Queries { get; set; } = new(); }
