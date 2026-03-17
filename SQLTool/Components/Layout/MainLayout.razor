@@ -1,20 +1,31 @@
-﻿@inherits LayoutComponentBase
+@* SQLTool/Components/Layout/MainLayout.razor *@
+@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
+<AuthorizeView>
+    <Authorized>
+        <nav class="sqltool-nav">
+            <span class="brand">SQLTool</span>
+            <div class="nav-links">
+                <a href="/">Run Query</a>
+                <AuthorizeView Roles="SQLTool.Admin" Context="adminContext">
+                    <a href="/admin/queries">Manage Queries</a>
+                    <a href="/admin/environments">Environments</a>
+                </AuthorizeView>
+            </div>
+            <span class="user-info">
+                @context.User.Identity?.Name
+                <a href="/MicrosoftIdentity/Account/SignOut">Sign out</a>
+            </span>
+        </nav>
+        <main class="sqltool-main">
             @Body
-        </article>
-    </main>
-</div>
+        </main>
+    </Authorized>
+    <NotAuthorized>
+        <RedirectToLogin />
+    </NotAuthorized>
+</AuthorizeView>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
