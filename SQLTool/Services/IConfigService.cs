@@ -11,5 +11,6 @@ public interface IConfigService
     void Reload();
     void SaveQuery(QueryDefinition query);
     void DeleteQuery(string queryId, bool permanent = false);
+    void EnableQuery(string queryId);
     string? GetConnectionString(string connectionStringKey);
 }

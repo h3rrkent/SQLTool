@@ -1,26 +1,40 @@
 {
   "queries": [
     {
-      "id": "orders-by-date",
-      "name": "Get orders by date range",
-      "description": "Returns all orders placed between two dates",
-      "allowedEnvironments": ["PROD", "TEST"],
-      "sql": "SELECT TOP 10000 OrderID, CustomerName, OrderDate, TotalAmount FROM Orders WHERE OrderDate BETWEEN @StartDate AND @EndDate ORDER BY OrderDate DESC",
+      "id": "4a9078cc",
+      "name": "test",
+      "description": "test",
+      "allowedEnvironments": [
+        "DEV",
+        "TEST",
+        "PROD"
+      ],
+      "sql": "Select *\nFROM Tworkflowactivated\nwhere fk_purchasejournal_id = @id",
       "enabled": true,
       "parameters": [
         {
-          "name": "StartDate",
-          "label": "Start date",
-          "type": "date",
-          "required": true
-        },
-        {
-          "name": "EndDate",
-          "label": "End date",
-          "type": "date",
-          "required": true
+          "name": "@id",
+          "label": "Id",
+          "type": "number",
+          "required": true,
+          "min": null,
+          "max": null,
+          "options": []
         }
       ]
+    },
+    {
+      "id": "e1ee944e",
+      "name": "Get Companies",
+      "description": "get",
+      "allowedEnvironments": [
+        "PROD",
+        "TEST",
+        "DEV"
+      ],
+      "sql": "Select *\nFrom Tcompany",
+      "enabled": true,
+      "parameters": []
     }
   ]
 }

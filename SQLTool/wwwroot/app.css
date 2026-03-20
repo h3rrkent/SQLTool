@@ -502,6 +502,16 @@ html, body {
     color: #374151;
 }
 
+.form-row label:has(input[type="checkbox"]) {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-weight: normal;
+    margin-bottom: .2rem;
+    margin-right: .75rem;
+    cursor: pointer;
+}
+
 .form-row input,
 .form-row textarea,
 .form-row select {
@@ -528,10 +538,19 @@ html, body {
 
 .param-row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: .5rem;
     margin-bottom: .5rem;
     flex-wrap: wrap;
+}
+
+.param-row label {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .85rem;
+    white-space: nowrap;
+    cursor: pointer;
 }
 
 .param-row input,

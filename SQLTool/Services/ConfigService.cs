@@ -70,6 +70,16 @@ public class ConfigService : IConfigService
         }
     }
 
+    public void EnableQuery(string queryId)
+    {
+        lock (_lock)
+        {
+            var q = _queries.FirstOrDefault(q => q.Id == queryId);
+            if (q is not null) q.Enabled = true;
+            PersistQueries();
+        }
+    }
+
     public void DeleteQuery(string queryId, bool permanent = false)
     {
         lock (_lock)

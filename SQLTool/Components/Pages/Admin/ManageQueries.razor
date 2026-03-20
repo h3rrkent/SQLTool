@@ -22,7 +22,14 @@
         </div>
         <span class="status-badge @(q.Enabled ? "active" : "inactive")">@(q.Enabled ? "Active" : "Disabled")</span>
         <button @onclick="() => StartEdit(q)">✏ Edit</button>
-        <button class="danger" @onclick="() => SoftDelete(q.Id)">Disable</button>
+        @if (q.Enabled)
+        {
+            <button class="danger" @onclick="() => SoftDelete(q.Id)">Disable</button>
+        }
+        else
+        {
+            <button @onclick="() => Enable(q.Id)">Enable</button>
+        }
         <button class="danger" @onclick="() => HardDelete(q.Id)">Remove permanently</button>
     </div>
 
@@ -105,7 +112,12 @@
 
     private void ReloadConfig() { ConfigService.Reload(); LoadData(); }
 
-    private void AddNew() => StartEdit(new QueryDefinition { Id = Guid.NewGuid().ToString("N")[..8] });
+    private void AddNew()
+    {
+        var newQuery = new QueryDefinition { Id = Guid.NewGuid().ToString("N")[..8] };
+        _allQueries.Add(newQuery);
+        StartEdit(newQuery);
+    }
 
     private void StartEdit(QueryDefinition q)
     {
@@ -127,7 +139,7 @@
         _editingId = q.Id;
     }
 
-    private void CancelEdit() { _editingId = null; _draft = null; }
+    private void CancelEdit() { _editingId = null; _draft = null; LoadData(); }
 
     private void SaveEdit()
     {
@@ -144,6 +156,7 @@
 
     private void SoftDelete(string id) { ConfigService.DeleteQuery(id, permanent: false); LoadData(); }
     private void HardDelete(string id) { ConfigService.DeleteQuery(id, permanent: true); LoadData(); }
+    private void Enable(string id) { ConfigService.EnableQuery(id); LoadData(); }
 
     private void AddParam() { _draft!.Parameters.Add(new()); _dropdownOptionsText[_draft.Parameters.Count - 1] = ""; }
     private void RemoveParam(int idx) { _draft!.Parameters.RemoveAt(idx); }
