@@ -8,45 +8,78 @@
 
 <PageTitle>SQLTool</PageTitle>
 
-<StepBar Steps="@_steps" CurrentStep="@_currentStep" OnStepClick="GoToStep" />
-
-@if (_currentStep == 0)
-{
-    <div class="step-content">
-        <h3>Select Environment</h3>
-        <div class="env-buttons">
-            @foreach (var env in _environments)
-            {
-                <button class="env-btn @(_selectedEnv?.Name == env.Name ? "active" : "")"
-                        @onclick="() => SelectEnvironment(env)">
-                    @env.Name
-                </button>
-            }
+<div class="home-layout">
+    <!-- LEFT SIDEBAR -->
+    <div class="panel">
+        <!-- Environment -->
+        <div class="panel-section">
+            <div class="panel-label">Environment</div>
+            <div class="env-buttons">
+                @foreach (var env in _environments)
+                {
+                    var isProd = env.Name.Equals("PROD", StringComparison.OrdinalIgnoreCase);
+                    <button class="env-btn @(_selectedEnv?.Name == env.Name ? "active" : "") @(isProd ? "prod" : "")"
+                            @onclick="() => SelectEnvironment(env)">
+                        @env.Name
+                    </button>
+                }
+            </div>
         </div>
-    </div>
-}
-else if (_currentStep == 1)
-{
-    <div class="step-content">
-        <h3>Select Database — @_selectedEnv!.Name</h3>
-        <DatabaseSelector Databases="@_selectedEnv.Databases" SelectedId="@_selectedDb?.Id"
-                         OnSelect="SelectDatabase" />
-    </div>
-}
-else if (_currentStep == 2)
-{
-    <div class="step-content step3">
-        <ProdWarningBanner Show="@(_selectedEnv!.Name == "PROD")" />
-        <div class="step3-layout">
-            <div class="query-panel">
-                <h3>Select Query</h3>
+
+        <!-- Database -->
+        @if (_selectedEnv is not null)
+        {
+            <div class="panel-section">
+                <div class="panel-label">Database</div>
+                <DatabaseSelector Databases="@_selectedEnv.Databases" SelectedId="@_selectedDb?.Id"
+                                  OnSelect="SelectDatabase" />
+            </div>
+        }
+
+        <!-- Queries -->
+        @if (_selectedDb is not null)
+        {
+            <div class="panel-section">
+                <div class="panel-label">Queries</div>
                 <QuerySelector Queries="@_queries" SelectedId="@_selectedQuery?.Id" OnSelect="SelectQuery" />
             </div>
-            @if (_selectedQuery is not null)
-            {
-                <div class="params-panel">
-                    <h3>Parameters</h3>
-                    <ParameterForm Parameters="@_selectedQuery.Parameters" @bind-Values="_paramValues" />
+        }
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+        @if (_selectedQuery is null)
+        {
+            <div class="panel panel-section" style="color: #9ca3af; font-size: .9rem;">
+                @if (_selectedEnv is null)
+                {
+                    <p>← Select an environment to get started.</p>
+                }
+                else if (_selectedDb is null)
+                {
+                    <p>← Select a database.</p>
+                }
+                else
+                {
+                    <p>← Select a query to run.</p>
+                }
+            </div>
+        }
+        else
+        {
+            <!-- Parameters & Run -->
+            <div class="panel">
+                <div class="panel-section">
+                    <div class="panel-label">@_selectedQuery.Name</div>
+                    @if (!string.IsNullOrEmpty(_selectedQuery.Description))
+                    {
+                        <p style="font-size:.875rem; color:#6b7280; margin-bottom:.75rem;">@_selectedQuery.Description</p>
+                    }
+                    <ProdWarningBanner Show="@(_selectedEnv!.Name.Equals("PROD", StringComparison.OrdinalIgnoreCase))" />
+                    @if (_selectedQuery.Parameters.Any())
+                    {
+                        <ParameterForm Parameters="@_selectedQuery.Parameters" @bind-Values="_paramValues" />
+                    }
                     @if (_validationErrors.Any())
                     {
                         <ul class="validation-errors">
@@ -54,29 +87,30 @@ else if (_currentStep == 2)
                         </ul>
                     }
                     <button class="run-btn" @onclick="RunQuery" disabled="@_isRunning">
-                        @(_isRunning ? "Running..." : "▶ Run Query")
+                        &#9658; @(_isRunning ? "Running..." : "Run Query")
                     </button>
                 </div>
+            </div>
+
+            <!-- Results -->
+            @if (_queryResult is not null)
+            {
+                <div class="panel">
+                    <div class="panel-section">
+                        <ResultsTable Result="_queryResult" QueryName="@(_selectedQuery?.Name ?? "results")" />
+                    </div>
+                </div>
             }
-        </div>
+        }
     </div>
-}
-else if (_currentStep == 3)
-{
-    <div class="step-content">
-        <ProdWarningBanner Show="@(_selectedEnv!.Name == "PROD")" />
-        <ResultsTable Result="_queryResult" QueryName="@(_selectedQuery?.Name ?? "results")" />
-    </div>
-}
+</div>
 
 @code {
-    private List<string> _steps = new() { "Environment", "Database", "Query", "Results" };
-    private int _currentStep = 0;
     private List<EnvironmentConfig> _environments = new();
     private EnvironmentConfig? _selectedEnv;
     private DatabaseEntry? _selectedDb;
-    private List<QueryDefinition> _queries = new();
-    private QueryDefinition? _selectedQuery;
+    private List<SQLTool.Models.QueryDefinition> _queries = new();
+    private SQLTool.Models.QueryDefinition? _selectedQuery;
     private List<SQLTool.Models.ParameterValue> _paramValues = new();
     private List<string> _validationErrors = new();
     private bool _isRunning = false;
@@ -89,9 +123,14 @@ else if (_currentStep == 3)
 
     private void SelectEnvironment(EnvironmentConfig env)
     {
+        if (_selectedEnv?.Name == env.Name) return;
         _selectedEnv = env;
         _selectedDb = null;
-        _currentStep = 1;
+        _queries = new();
+        _selectedQuery = null;
+        _paramValues = new();
+        _validationErrors = new();
+        _queryResult = null;
     }
 
     private void SelectDatabase(DatabaseEntry db)
@@ -103,14 +142,15 @@ else if (_currentStep == 3)
         _selectedQuery = null;
         _paramValues = new();
         _validationErrors = new();
-        _currentStep = 2;
+        _queryResult = null;
     }
 
-    private void SelectQuery(QueryDefinition q)
+    private void SelectQuery(SQLTool.Models.QueryDefinition q)
     {
         _selectedQuery = q;
         _paramValues = new();
         _validationErrors = new();
+        _queryResult = null;
     }
 
     private async Task RunQuery()
@@ -122,7 +162,6 @@ else if (_currentStep == 3)
             _validationErrors = validation.Errors;
             return;
         }
-        // Server-side allowedEnvironments check
         if (!_selectedQuery!.AllowedEnvironments.Contains(_selectedEnv!.Name, StringComparer.OrdinalIgnoreCase))
         {
             _validationErrors = new() { "This query is not allowed in the selected environment." };
@@ -132,11 +171,5 @@ else if (_currentStep == 3)
         StateHasChanged();
         _queryResult = await QueryEngine.ExecuteAsync(_selectedQuery!, _selectedDb!, _paramValues);
         _isRunning = false;
-        _currentStep = 3;
-    }
-
-    private void GoToStep(int step)
-    {
-        if (step < _currentStep) _currentStep = step;
     }
 }
