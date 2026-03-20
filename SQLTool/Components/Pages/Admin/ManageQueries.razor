@@ -30,7 +30,17 @@
         {
             <button @onclick="() => Enable(q.Id)">Enable</button>
         }
-        <button class="danger" @onclick="() => HardDelete(q.Id)">Remove permanently</button>
+        @if (_confirmDeleteId == q.Id)
+        {
+            <span class="confirm-delete">Remove permanently?
+                <button class="danger" @onclick="() => ConfirmHardDelete(q.Id)">Yes</button>
+                <button @onclick="() => _confirmDeleteId = null">Cancel</button>
+            </span>
+        }
+        else
+        {
+            <button class="danger" @onclick="() => _confirmDeleteId = q.Id">Remove permanently</button>
+        }
     </div>
 
     @if (_editingId == q.Id)
@@ -99,6 +109,7 @@
     private List<QueryDefinition> _allQueries = new();
     private List<string> _allEnvNames = new();
     private string? _editingId;
+    private string? _confirmDeleteId;
     private QueryDefinition? _draft;
     private Dictionary<int, string> _dropdownOptionsText = new();
 
@@ -149,17 +160,26 @@
             if (_draft.Parameters[i].Type == "dropdown")
                 SyncDropdownOptions(i);
         }
+        foreach (var p in _draft!.Parameters)
+            if (p.Name.StartsWith('@')) p.Name = p.Name[1..];
         ConfigService.SaveQuery(_draft!);
         CancelEdit();
         LoadData();
     }
 
     private void SoftDelete(string id) { ConfigService.DeleteQuery(id, permanent: false); LoadData(); }
-    private void HardDelete(string id) { ConfigService.DeleteQuery(id, permanent: true); LoadData(); }
+    private void ConfirmHardDelete(string id) { _confirmDeleteId = null; ConfigService.DeleteQuery(id, permanent: true); LoadData(); }
     private void Enable(string id) { ConfigService.EnableQuery(id); LoadData(); }
 
     private void AddParam() { _draft!.Parameters.Add(new()); _dropdownOptionsText[_draft.Parameters.Count - 1] = ""; }
-    private void RemoveParam(int idx) { _draft!.Parameters.RemoveAt(idx); }
+    private void RemoveParam(int idx)
+    {
+        _draft!.Parameters.RemoveAt(idx);
+        var newMap = new Dictionary<int, string>();
+        for (var i = 0; i < _draft.Parameters.Count; i++)
+            newMap[i] = _dropdownOptionsText.GetValueOrDefault(i < idx ? i : i + 1, "");
+        _dropdownOptionsText = newMap;
+    }
 
     private void ToggleEnv(string env, bool add)
     {

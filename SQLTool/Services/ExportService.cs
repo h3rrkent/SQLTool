@@ -33,7 +33,7 @@ public class ExportService : IExportService
 
         for (var r = 0; r < result.Rows.Count; r++)
             for (var c = 0; c < result.Columns.Count; c++)
-                ws.Cell(r + 2, c + 1).Value = result.Rows[r].GetValueOrDefault(result.Columns[c])?.ToString() ?? "";
+                ws.Cell(r + 2, c + 1).Value = ToXLValue(result.Rows[r].GetValueOrDefault(result.Columns[c]));
 
         ws.Row(1).Style.Font.Bold = true;
         ws.Columns().AdjustToContents();
@@ -41,4 +41,18 @@ public class ExportService : IExportService
         wb.SaveAs(ms);
         return ms.ToArray();
     }
+
+    private static XLCellValue ToXLValue(object? value) => value switch
+    {
+        null => Blank.Value,
+        bool b => b,
+        int i => i,
+        long l => l,
+        double d => d,
+        float f => f,
+        decimal dec => (double)dec,
+        DateTime dt => dt,
+        DateOnly d => d.ToDateTime(TimeOnly.MinValue),
+        _ => value.ToString() ?? ""
+    };
 }

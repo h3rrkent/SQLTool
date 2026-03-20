@@ -44,6 +44,13 @@
     [Parameter] public List<SQLTool.Models.ParameterValue> Values { get; set; } = new();
     [Parameter] public EventCallback<List<SQLTool.Models.ParameterValue>> ValuesChanged { get; set; }
 
+    protected override void OnParametersSet()
+    {
+        foreach (var param in Parameters.Where(p => p.Type == "boolean"))
+            if (!Values.Any(v => v.Name == param.Name))
+                SetValue(param.Name, "false");
+    }
+
     private string? GetValue(string name) => Values.FirstOrDefault(v => v.Name == name)?.Value;
 
     private void SetValue(string name, string? value)

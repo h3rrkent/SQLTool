@@ -40,14 +40,16 @@
 
     private async Task ExportCsv()
     {
-        var csv = ExportService.ToCsv(Result!);
+        if (Result is null) return;
+        var csv = ExportService.ToCsv(Result);
         var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
         await JS.InvokeVoidAsync("downloadFile", $"{QueryName}.csv", "text/csv", bytes);
     }
 
     private async Task ExportExcel()
     {
-        var bytes = ExportService.ToExcel(Result!, QueryName);
+        if (Result is null) return;
+        var bytes = ExportService.ToExcel(Result, QueryName);
         await JS.InvokeVoidAsync("downloadFile", $"{QueryName}.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes);
     }
