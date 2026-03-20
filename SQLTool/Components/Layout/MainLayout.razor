@@ -1,0 +1,55 @@
+@* SQLTool/Components/Layout/MainLayout.razor *@
+@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@inject NavigationManager Nav
+
+<AuthorizeView>
+    <Authorized>
+        <div class="sqltool-body">
+            <nav class="sqltool-nav">
+                <span class="brand">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <ellipse cx="12" cy="6" rx="8" ry="3" stroke="#1b6ec2" stroke-width="2"/>
+                        <path d="M4 6v4c0 1.657 3.582 3 8 3s8-1.343 8-3V6" stroke="#1b6ec2" stroke-width="2"/>
+                        <path d="M4 10v4c0 1.657 3.582 3 8 3s8-1.343 8-3v-4" stroke="#1b6ec2" stroke-width="2"/>
+                        <path d="M4 14v4c0 1.657 3.582 3 8 3s8-1.343 8-3v-4" stroke="#1b6ec2" stroke-width="2"/>
+                    </svg>
+                    SQLTool
+                </span>
+                <div class="nav-links">
+                    <a href="/" class="@(IsActive("/") ? "active" : "")">Run Query</a>
+                    <AuthorizeView Roles="SQLTool.Admin" Context="adminContext">
+                        <a href="/admin/queries" class="@(IsActive("/admin/queries") ? "active" : "")">Manage Queries</a>
+                        <a href="/admin/environments" class="@(IsActive("/admin/environments") ? "active" : "")">Environments</a>
+                    </AuthorizeView>
+                </div>
+                <span class="user-info">
+                    @context.User.Identity?.Name
+                    <a href="/logout">Sign out</a>
+                </span>
+            </nav>
+            <main class="sqltool-main">
+                @Body
+            </main>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <RedirectToLogin />
+    </NotAuthorized>
+</AuthorizeView>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">&#x1F5D9;</span>
+</div>
+
+@code {
+    private bool IsActive(string href)
+    {
+        var current = Nav.ToBaseRelativePath(Nav.Uri);
+        if (href == "/")
+            return current == "" || current == "/";
+        return current.StartsWith(href.TrimStart('/'), StringComparison.OrdinalIgnoreCase);
+    }
+}

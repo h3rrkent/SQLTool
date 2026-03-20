@@ -1,0 +1,8 @@
+@* SQLTool/Components/Shared/ProdWarningBanner.razor *@
+@if (Show)
+{
+    <div class="prod-warning">
+        ⚠️ This query runs on <strong>PROD</strong>. Results are read-only.
+    </div>
+}
+@code { [Parameter] public bool Show { get; set; } }

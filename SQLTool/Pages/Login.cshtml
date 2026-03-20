@@ -1,0 +1,110 @@
+@page
+@model SQLTool.Pages.LoginModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SQLTool – Sign In</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: #f4f6f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .login-card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,.1);
+            padding: 2.5rem 2rem;
+            width: 100%;
+            max-width: 360px;
+        }
+        .login-card h1 {
+            margin: 0 0 .25rem;
+            font-size: 1.5rem;
+            color: #1b6ec2;
+        }
+        .login-card p.subtitle {
+            margin: 0 0 1.5rem;
+            color: #666;
+            font-size: .9rem;
+        }
+        label {
+            display: block;
+            font-size: .85rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: .3rem;
+        }
+        input[type=text], input[type=password] {
+            width: 100%;
+            padding: .55rem .75rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            transition: border-color .15s;
+        }
+        input[type=text]:focus, input[type=password]:focus {
+            outline: none;
+            border-color: #1b6ec2;
+            box-shadow: 0 0 0 3px rgba(27,110,194,.15);
+        }
+        button[type=submit] {
+            width: 100%;
+            padding: .65rem;
+            background: #1b6ec2;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .15s;
+        }
+        button[type=submit]:hover { background: #1861ac; }
+        .error {
+            background: #fdecea;
+            color: #c0392b;
+            border: 1px solid #f5c6cb;
+            border-radius: 5px;
+            padding: .6rem .75rem;
+            font-size: .875rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h1>SQLTool</h1>
+        <p class="subtitle">Sign in to continue</p>
+
+        @if (Model.Error != null)
+        {
+            <div class="error">@Model.Error</div>
+        }
+
+        <form method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" autocomplete="username" autofocus />
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" />
+
+            <button type="submit">Sign in</button>
+        </form>
+    </div>
+</body>
+</html>

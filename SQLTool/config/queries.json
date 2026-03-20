@@ -1,0 +1,17 @@
+{
+  "queries": [
+    {
+      "id": "c3128d05",
+      "name": "test",
+      "description": "test",
+      "allowedEnvironments": [
+        "PROD",
+        "TEST",
+        "DEV"
+      ],
+      "sql": "select * from tcompany",
+      "enabled": true,
+      "parameters": []
+    }
+  ]
+}

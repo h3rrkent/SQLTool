@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SQLTool — Redesign Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #F8F9FA;
+      --surface:   #FFFFFF;
+      --border:    #E5E7EB;
+      --border-md: #D1D5DB;
+      --primary:   #2563EB;
+      --primary-hover: #1D4ED8;
+      --primary-light: #EFF6FF;
+      --text:      #111827;
+      --text-secondary: #6B7280;
+      --text-tertiary:  #9CA3AF;
+      --warning-bg: #FFFBEB;
+      --warning-border: #F59E0B;
+      --warning-text: #92400E;
+      --danger:    #EF4444;
+      --success:   #10B981;
+      --radius:    8px;
+      --radius-lg: 12px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.05);
+      --shadow:    0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06);
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ─── NAV ─────────────────────────────────────────────── */
+    .nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      height: 56px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 32px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .nav-brand {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-brand svg { width: 20px; height: 20px; }
+
+    .nav-links {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .nav-link {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .nav-link:hover { background: var(--bg); color: var(--text); }
+    .nav-link.active { background: var(--primary-light); color: var(--primary); }
+
+    .nav-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: auto;
+    }
+
+    .nav-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-username {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .btn-signout {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      text-decoration: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: all 0.15s;
+    }
+    .btn-signout:hover { color: var(--text-secondary); background: var(--bg); }
+
+    /* ─── PAGE WRAPPER ─────────────────────────────────────── */
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ─── FILTER BAR ───────────────────────────────────────── */
+    .filter-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex: 1;
+    }
+
+    .filter-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-tertiary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .filter-label .step-num {
+      width: 16px; height: 16px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      font-size: 9px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .filter-label .step-num.done {
+      background: var(--success);
+    }
+
+    select, .select-mock {
+      height: 38px;
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius);
+      padding: 0 32px 0 12px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      background: var(--surface);
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      width: 100%;
+    }
+    select:focus, .select-mock:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+    select:disabled {
+      background-color: var(--bg);
+      color: var(--text-tertiary);
+      cursor: not-allowed;
+    }
+
+    .filter-divider {
+      width: 1px;
+      height: 38px;
+      background: var(--border);
+      margin-bottom: 0;
+    }
+
+    .btn-run {
+      height: 38px;
+      padding: 0 20px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      transition: background 0.15s, transform 0.1s;
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-run:hover { background: var(--primary-hover); }
+    .btn-run:active { transform: scale(0.98); }
+    .btn-run:disabled { background: var(--text-tertiary); cursor: not-allowed; }
+
+    .btn-run svg { width: 14px; height: 14px; }
+
+    /* ─── PROD WARNING ─────────────────────────────────────── */
+    .prod-warning {
+      background: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      border-radius: var(--radius);
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--warning-text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ─── PARAMS CARD ──────────────────────────────────────── */
+    .params-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-header {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-tertiary);
+      margin-bottom: 16px;
+    }
+
+    .params-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      align-items: end;
+    }
+
+    .param-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .param-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    .param-label .required {
+      color: var(--danger);
+      margin-left: 2px;
+    }
+
+    input[type="text"], input[type="date"], input[type="number"] {
+      height: 36px;
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius);
+      padding: 0 12px;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--text);
+      width: 100%;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+
+    /* ─── RESULTS CARD ─────────────────────────────────────── */
+    .results-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .results-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .results-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .row-count {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .elapsed {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .badge-trunc {
+      background: #FEF3C7;
+      color: #92400E;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+
+    .export-btns {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-export {
+      height: 32px;
+      padding: 0 14px;
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius);
+      background: var(--surface);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    .btn-export:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+
+    .table-wrap {
+      overflow-x: auto;
+      max-height: 480px;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg); }
+
+    tbody td {
+      padding: 10px 16px;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    /* ─── ADMIN PAGES ──────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .page-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .page-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .btn-primary {
+      height: 36px;
+      padding: 0 16px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-secondary {
+      height: 36px;
+      padding: 0 14px;
+      background: var(--surface);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .query-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .query-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    .query-item.disabled { opacity: 0.55; }
+
+    .query-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .query-meta {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+    }
+
+    .query-info { flex: 1; }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 99px;
+    }
+    .badge-active { background: #D1FAE5; color: #065F46; }
+    .badge-inactive { background: #F3F4F6; color: var(--text-secondary); }
+
+    .query-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-sm {
+      height: 30px;
+      padding: 0 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border-md);
+      background: var(--surface);
+      color: var(--text-secondary);
+    }
+    .btn-sm.danger { color: var(--danger); border-color: #FECACA; }
+    .btn-sm.danger:hover { background: #FEF2F2; }
+
+    /* ─── TABS (SECTION SWITCHER) ──────────────────────────── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0;
+      margin-bottom: 24px;
+    }
+    .tab {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      padding: 8px 16px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.15s;
+      border-radius: 4px 4px 0 0;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+
+    .section { display: none; }
+    .section.visible { display: block; }
+
+    /* ─── EMPTY STATE ──────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 64px 32px;
+      color: var(--text-tertiary);
+    }
+    .empty-state svg { margin-bottom: 16px; opacity: 0.4; }
+    .empty-state h3 { font-size: 15px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+    .empty-state p { font-size: 13px; }
+
+    /* ─── LOADING STATE ────────────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg) 25%, #F0F0F0 50%, var(--bg) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px;
+      height: 36px;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    hr { border: none; border-top: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  NAV                                                           -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<nav class="nav">
+  <div class="nav-brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <ellipse cx="12" cy="5" rx="9" ry="3"/>
+      <path d="M21 12c0 1.66-4.03 3-9 3S3 13.66 3 12"/>
+      <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/>
+    </svg>
+    SQLTool
+  </div>
+  <div class="nav-links">
+    <a class="nav-link active" href="#" onclick="showSection('query');return false">Run Query</a>
+    <a class="nav-link" href="#" onclick="showSection('admin');return false">Manage Queries</a>
+    <a class="nav-link" href="#" onclick="showSection('envs');return false">Environments</a>
+  </div>
+  <div class="nav-user">
+    <div class="nav-avatar">JD</div>
+    <span class="nav-username">Jane Doe</span>
+    <a class="btn-signout" href="#">Sign out</a>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  RUN QUERY PAGE                                                -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="section-query" class="section visible">
+  <div class="page">
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <div class="filter-group">
+        <span class="filter-label">
+          <span class="step-num done">✓</span>
+          Environment
+        </span>
+        <select>
+          <option>PROD</option>
+          <option>STAGING</option>
+          <option>DEV</option>
+        </select>
+      </div>
+
+      <div class="filter-divider"></div>
+
+      <div class="filter-group">
+        <span class="filter-label">
+          <span class="step-num done">✓</span>
+          Database
+        </span>
+        <select>
+          <option>Sales DB</option>
+          <option>Reporting DB</option>
+          <option>Analytics DB</option>
+        </select>
+      </div>
+
+      <div class="filter-divider"></div>
+
+      <div class="filter-group" style="flex: 2">
+        <span class="filter-label">
+          <span class="step-num done">✓</span>
+          Query
+        </span>
+        <select>
+          <option>Orders by Date Range</option>
+          <option>Customer Summary</option>
+          <option>Invoice Report</option>
+          <option>Revenue by Region</option>
+        </select>
+      </div>
+
+      <button class="btn-run">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3l14 9-14 9V3z"/></svg>
+        Run Query
+      </button>
+    </div>
+
+    <!-- PROD Warning -->
+    <div class="prod-warning">
+      ⚠️ <strong>Production environment</strong> — this query runs against live data. Results are read-only.
+    </div>
+
+    <!-- Parameters -->
+    <div class="params-card">
+      <div class="card-header">Parameters</div>
+      <div class="params-grid">
+        <div class="param-group">
+          <label class="param-label">Start Date <span class="required">*</span></label>
+          <input type="date" value="2024-01-01" />
+        </div>
+        <div class="param-group">
+          <label class="param-label">End Date <span class="required">*</span></label>
+          <input type="date" value="2024-03-31" />
+        </div>
+        <div class="param-group">
+          <label class="param-label">Customer Name</label>
+          <input type="text" placeholder="All customers" />
+        </div>
+        <div class="param-group">
+          <label class="param-label">Region</label>
+          <select>
+            <option>All regions</option>
+            <option>North</option>
+            <option>South</option>
+            <option>West</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results-card">
+      <div class="results-header">
+        <div class="results-meta">
+          <span class="row-count">1,248 rows</span>
+          <span class="elapsed">· 38 ms</span>
+        </div>
+        <div class="export-btns">
+          <button class="btn-export">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Export CSV
+          </button>
+          <button class="btn-export">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Export Excel
+          </button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Customer</th>
+              <th>Date</th>
+              <th>Region</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>#10042</td><td>Acme Corp</td><td>2024-01-08</td><td>North</td><td>€ 3,200.00</td><td><span class="badge badge-active">Paid</span></td></tr>
+            <tr><td>#10043</td><td>Globex Inc</td><td>2024-01-09</td><td>South</td><td>€ 1,875.50</td><td><span class="badge badge-active">Paid</span></td></tr>
+            <tr><td>#10044</td><td>Initech</td><td>2024-01-11</td><td>West</td><td>€ 5,430.00</td><td><span class="badge badge-inactive">Pending</span></td></tr>
+            <tr><td>#10045</td><td>Umbrella Corp</td><td>2024-01-14</td><td>North</td><td>€ 920.00</td><td><span class="badge badge-active">Paid</span></td></tr>
+            <tr><td>#10046</td><td>Stark Industries</td><td>2024-01-15</td><td>South</td><td>€ 12,800.00</td><td><span class="badge badge-active">Paid</span></td></tr>
+            <tr><td>#10047</td><td>Wayne Enterprises</td><td>2024-01-18</td><td>West</td><td>€ 2,100.00</td><td><span class="badge badge-inactive">Pending</span></td></tr>
+            <tr><td>#10048</td><td>Acme Corp</td><td>2024-01-22</td><td>North</td><td>€ 4,650.00</td><td><span class="badge badge-active">Paid</span></td></tr>
+            <tr><td>#10049</td><td>Globex Inc</td><td>2024-01-25</td><td>South</td><td>€ 780.00</td><td><span class="badge badge-active">Paid</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  MANAGE QUERIES (ADMIN)                                        -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="section-admin" class="section">
+  <div class="page">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Manage Queries</h1>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary">↺ Reload Config</button>
+        <button class="btn-primary">+ Add Query</button>
+      </div>
+    </div>
+    <p class="page-subtitle">queries.json · 5 queries defined</p>
+
+    <div class="query-list">
+      <div class="query-item">
+        <div class="query-info">
+          <div class="query-name">Orders by Date Range</div>
+          <div class="query-meta">2 parameters · PROD, STAGING, DEV</div>
+        </div>
+        <span class="badge badge-active">Active</span>
+        <div class="query-actions">
+          <button class="btn-sm">✏ Edit</button>
+          <button class="btn-sm danger">Disable</button>
+          <button class="btn-sm danger">Remove</button>
+        </div>
+      </div>
+
+      <div class="query-item">
+        <div class="query-info">
+          <div class="query-name">Customer Summary</div>
+          <div class="query-meta">1 parameter · PROD, STAGING</div>
+        </div>
+        <span class="badge badge-active">Active</span>
+        <div class="query-actions">
+          <button class="btn-sm">✏ Edit</button>
+          <button class="btn-sm danger">Disable</button>
+          <button class="btn-sm danger">Remove</button>
+        </div>
+      </div>
+
+      <div class="query-item disabled">
+        <div class="query-info">
+          <div class="query-name">Legacy Invoice Export</div>
+          <div class="query-meta">3 parameters · STAGING, DEV</div>
+        </div>
+        <span class="badge badge-inactive">Disabled</span>
+        <div class="query-actions">
+          <button class="btn-sm">✏ Edit</button>
+          <button class="btn-sm danger">Enable</button>
+          <button class="btn-sm danger">Remove</button>
+        </div>
+      </div>
+
+      <div class="query-item">
+        <div class="query-info">
+          <div class="query-name">Revenue by Region</div>
+          <div class="query-meta">4 parameters · PROD</div>
+        </div>
+        <span class="badge badge-active">Active</span>
+        <div class="query-actions">
+          <button class="btn-sm">✏ Edit</button>
+          <button class="btn-sm danger">Disable</button>
+          <button class="btn-sm danger">Remove</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  ENVIRONMENTS (ADMIN)                                          -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="section-envs" class="section">
+  <div class="page">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Environments</h1>
+      </div>
+    </div>
+    <p class="page-subtitle">Connection strings are resolved from environment variables or Azure Key Vault — not stored here.</p>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="results-card">
+        <div class="results-header">
+          <span style="font-size:14px;font-weight:600">PROD</span>
+          <span style="font-size:12px;color:var(--text-tertiary);margin-left:8px">2 databases</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Label</th><th>Connection String Key</th><th>Timeout</th></tr></thead>
+            <tbody>
+              <tr><td>Sales DB</td><td><code style="font-size:12px;background:var(--bg);padding:2px 6px;border-radius:4px">CONN_PROD_SALES</code></td><td>30 s</td></tr>
+              <tr><td>Reporting DB</td><td><code style="font-size:12px;background:var(--bg);padding:2px 6px;border-radius:4px">CONN_PROD_REPORTING</code></td><td>60 s</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="results-card">
+        <div class="results-header">
+          <span style="font-size:14px;font-weight:600">STAGING</span>
+          <span style="font-size:12px;color:var(--text-tertiary);margin-left:8px">1 database</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Label</th><th>Connection String Key</th><th>Timeout</th></tr></thead>
+            <tbody>
+              <tr><td>Sales DB</td><td><code style="font-size:12px;background:var(--bg);padding:2px 6px;border-radius:4px">CONN_STAGING_SALES</code></td><td>30 s</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function showSection(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
+    document.getElementById('section-' + name).classList.add('visible');
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    event.target.classList.add('active');
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,10 @@
+@* SQLTool/Components/Pages/AccessDenied.razor *@
+@page "/access-denied"
+@attribute [AllowAnonymous]
+
+<div class="access-denied">
+    <h2>Access Denied</h2>
+    <p>Your account does not have permission to access SQLTool.</p>
+    <p>Please contact your administrator to be assigned the <strong>SQLTool.User</strong> or <strong>SQLTool.Admin</strong> role.</p>
+    <a href="/logout">Sign out</a>
+</div>

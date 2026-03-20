@@ -1,0 +1,199 @@
+@* SQLTool/Components/Pages/Admin/ManageQueries.razor *@
+@page "/admin/queries"
+@attribute [Authorize(Policy = "AdminPolicy")]
+@rendermode InteractiveServer
+@using SQLTool.Models
+@using SQLTool.Services
+@inject IConfigService ConfigService
+
+<h2>Manage Queries</h2>
+<div class="admin-header">
+    <span class="config-hint">Source: queries.json · @_allQueries.Count queries</span>
+    <button @onclick="ReloadConfig">🔄 Reload Config</button>
+    <button @onclick="AddNew">+ Add Query</button>
+</div>
+
+@foreach (var q in _allQueries)
+{
+    <div class="query-row @(!q.Enabled ? "disabled" : "")">
+        <div class="query-info">
+            <strong>@q.Name</strong>
+            <small>@q.Parameters.Count param(s) · @string.Join(", ", q.AllowedEnvironments)</small>
+        </div>
+        <span class="status-badge @(q.Enabled ? "active" : "inactive")">@(q.Enabled ? "Active" : "Disabled")</span>
+        <button @onclick="() => StartEdit(q)">✏ Edit</button>
+        @if (q.Enabled)
+        {
+            <button class="danger" @onclick="() => SoftDelete(q.Id)">Disable</button>
+        }
+        else
+        {
+            <button @onclick="() => Enable(q.Id)">Enable</button>
+        }
+        @if (_confirmDeleteId == q.Id)
+        {
+            <span class="confirm-delete">Remove permanently?
+                <button class="danger" @onclick="() => ConfirmHardDelete(q.Id)">Yes</button>
+                <button @onclick="() => _confirmDeleteId = null">Cancel</button>
+            </span>
+        }
+        else
+        {
+            <button class="danger" @onclick="() => _confirmDeleteId = q.Id">Remove permanently</button>
+        }
+    </div>
+
+    @if (_editingId == q.Id)
+    {
+        <div class="edit-form">
+            <div class="form-row">
+                <label>Display Name</label>
+                <input @bind="_draft!.Name" />
+            </div>
+            <div class="form-row">
+                <label>Description</label>
+                <input @bind="_draft!.Description" />
+            </div>
+            <div class="form-row">
+                <label>Allowed Environments</label>
+                @foreach (var env in _allEnvNames)
+                {
+                    <label><input type="checkbox" checked="@_draft!.AllowedEnvironments.Contains(env)"
+                                  @onchange="e => ToggleEnv(env, (bool)(e.Value ?? false))" /> @env</label>
+                }
+            </div>
+            <div class="form-row">
+                <label>SQL</label>
+                <textarea @bind="_draft!.Sql" rows="5"></textarea>
+                <small>Use @@ParameterName for parameters</small>
+            </div>
+            <div class="params-editor">
+                <h4>Parameters <button @onclick="AddParam">+ Add</button></h4>
+                @for (var i = 0; i < _draft!.Parameters.Count; i++)
+                {
+                    var idx = i;
+                    var p = _draft.Parameters[idx];
+                    <div class="param-row">
+                        <input placeholder="SQL Name (e.g. StartDate)" @bind="p.Name" />
+                        <input placeholder="Label (shown to user)" @bind="p.Label" />
+                        <select @bind="p.Type">
+                            <option value="text">Text</option>
+                            <option value="date">Date</option>
+                            <option value="number">Number</option>
+                            <option value="boolean">Yes/No</option>
+                            <option value="dropdown">Dropdown</option>
+                        </select>
+                        <label><input type="checkbox" @bind="p.Required" /> Required</label>
+                        @if (p.Type == "dropdown")
+                        {
+                            <div class="dropdown-opts">
+                                <small>Options (value:label, one per line)</small>
+                                <textarea rows="3"
+                                          value="@_dropdownOptionsText.GetValueOrDefault(idx, "")"
+                                          @onchange="e => { _dropdownOptionsText[idx] = e.Value?.ToString() ?? string.Empty; SyncDropdownOptions(idx); }"></textarea>
+                            </div>
+                        }
+                        <button class="danger" @onclick="() => RemoveParam(idx)">🗑</button>
+                    </div>
+                }
+            </div>
+            <div class="form-actions">
+                <button @onclick="CancelEdit">Cancel</button>
+                <button class="primary" @onclick="SaveEdit">💾 Save to config</button>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<QueryDefinition> _allQueries = new();
+    private List<string> _allEnvNames = new();
+    private string? _editingId;
+    private string? _confirmDeleteId;
+    private QueryDefinition? _draft;
+    private Dictionary<int, string> _dropdownOptionsText = new();
+
+    protected override void OnInitialized() => LoadData();
+
+    private void LoadData()
+    {
+        _allQueries = ConfigService.GetAllQueries().ToList();
+        _allEnvNames = ConfigService.GetEnvironments().Select(e => e.Name).ToList();
+    }
+
+    private void ReloadConfig() { ConfigService.Reload(); LoadData(); }
+
+    private void AddNew()
+    {
+        var newQuery = new QueryDefinition { Id = Guid.NewGuid().ToString("N")[..8] };
+        _allQueries.Add(newQuery);
+        StartEdit(newQuery);
+    }
+
+    private void StartEdit(QueryDefinition q)
+    {
+        _draft = new QueryDefinition
+        {
+            Id = q.Id, Name = q.Name, Description = q.Description,
+            AllowedEnvironments = new(q.AllowedEnvironments),
+            Sql = q.Sql, Enabled = q.Enabled,
+            Parameters = q.Parameters.Select(p => new QueryParameter
+            {
+                Name = p.Name, Label = p.Label, Type = p.Type,
+                Required = p.Required, Min = p.Min, Max = p.Max,
+                Options = new(p.Options)
+            }).ToList()
+        };
+        _dropdownOptionsText = _draft.Parameters
+            .Select((p, i) => (i, string.Join("\n", p.Options.Select(o => $"{o.Value}:{o.Label}"))))
+            .ToDictionary(x => x.i, x => x.Item2);
+        _editingId = q.Id;
+    }
+
+    private void CancelEdit() { _editingId = null; _draft = null; LoadData(); }
+
+    private void SaveEdit()
+    {
+        // Sync all dropdown options before saving
+        for (var i = 0; i < _draft!.Parameters.Count; i++)
+        {
+            if (_draft.Parameters[i].Type == "dropdown")
+                SyncDropdownOptions(i);
+        }
+        foreach (var p in _draft!.Parameters)
+            if (p.Name.StartsWith('@')) p.Name = p.Name[1..];
+        ConfigService.SaveQuery(_draft!);
+        CancelEdit();
+        LoadData();
+    }
+
+    private void SoftDelete(string id) { ConfigService.DeleteQuery(id, permanent: false); LoadData(); }
+    private void ConfirmHardDelete(string id) { _confirmDeleteId = null; ConfigService.DeleteQuery(id, permanent: true); LoadData(); }
+    private void Enable(string id) { ConfigService.EnableQuery(id); LoadData(); }
+
+    private void AddParam() { _draft!.Parameters.Add(new()); _dropdownOptionsText[_draft.Parameters.Count - 1] = ""; }
+    private void RemoveParam(int idx)
+    {
+        _draft!.Parameters.RemoveAt(idx);
+        var newMap = new Dictionary<int, string>();
+        for (var i = 0; i < _draft.Parameters.Count; i++)
+            newMap[i] = _dropdownOptionsText.GetValueOrDefault(i < idx ? i : i + 1, "");
+        _dropdownOptionsText = newMap;
+    }
+
+    private void ToggleEnv(string env, bool add)
+    {
+        if (add && !_draft!.AllowedEnvironments.Contains(env)) _draft.AllowedEnvironments.Add(env);
+        else if (!add) _draft!.AllowedEnvironments.Remove(env);
+    }
+
+    private void SyncDropdownOptions(int idx)
+    {
+        var lines = _dropdownOptionsText.GetValueOrDefault(idx, "").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        _draft!.Parameters[idx].Options = lines
+            .Select(l => l.Split(':', 2))
+            .Where(parts => parts.Length == 2)
+            .Select(parts => new DropdownOption { Value = parts[0].Trim(), Label = parts[1].Trim() })
+            .ToList();
+    }
+}

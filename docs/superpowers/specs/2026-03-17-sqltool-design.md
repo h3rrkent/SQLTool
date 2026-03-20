@@ -70,15 +70,43 @@ Queries are defined in `queries.json` and loaded at startup (with live reload su
 }
 ```
 
-### Parameter input types
+### Parameter input types & validation
 
-| Type | UI control |
-|------|-----------|
-| `date` | Date picker |
-| `number` | Numeric input |
-| `text` | Text input |
-| `boolean` | Yes/No toggle |
-| `dropdown` | Select list (options defined in config) |
+| Type | UI control | Validation |
+|------|-----------|-----------|
+| `date` | Date picker | ISO 8601 format (yyyy-MM-dd); required check if `required: true` |
+| `number` | Numeric input | Decimal allowed; optional `min` / `max` in config; no empty if required |
+| `text` | Text input | Max 500 characters; no empty if required |
+| `boolean` | Yes/No toggle | Always has a value (defaults to `false`) |
+| `dropdown` | Select list | Value must match one of the configured `options`; validated server-side before execution |
+
+**Dropdown parameter schema:**
+
+```json
+{
+  "name": "Status",
+  "label": "Status",
+  "type": "dropdown",
+  "required": true,
+  "options": [
+    { "value": "active", "label": "Active" },
+    { "value": "inactive", "label": "Inactive" }
+  ]
+}
+```
+
+**Number parameter with constraints:**
+
+```json
+{
+  "name": "MaxResults",
+  "label": "Max results",
+  "type": "number",
+  "required": false,
+  "min": 1,
+  "max": 1000
+}
+```
 
 ### environments.json structure
 
@@ -88,32 +116,39 @@ Queries are defined in `queries.json` and loaded at startup (with live reload su
     {
       "name": "PROD",
       "databases": [
-        { "id": "customerdb-be", "label": "CustomerDB_BE", "connectionString": "Server=...;Database=CustomerDB_BE;..." },
-        { "id": "customerdb-nl", "label": "CustomerDB_NL", "connectionString": "..." }
+        { "id": "customerdb-be", "label": "CustomerDB_BE", "connectionStringKey": "PROD_CustomerDB_BE" },
+        { "id": "customerdb-nl", "label": "CustomerDB_NL", "connectionStringKey": "PROD_CustomerDB_NL" }
       ]
     },
     {
       "name": "TEST",
       "databases": [
-        { "id": "test-db", "label": "TestDB", "connectionString": "..." }
+        { "id": "test-db", "label": "TestDB", "connectionStringKey": "TEST_TestDB" }
       ]
     },
     {
       "name": "DEV",
       "databases": [
-        { "id": "dev-db", "label": "DevDB", "connectionString": "..." }
+        { "id": "dev-db", "label": "DevDB", "connectionStringKey": "DEV_DevDB" }
       ]
     }
   ]
 }
 ```
 
+**Secrets management:** `environments.json` stores only a `connectionStringKey` name — not the actual connection string. Actual connection strings are resolved at runtime from one of:
+1. ASP.NET Core `ConnectionStrings` section in `appsettings.json` (local dev, secrets.json)
+2. Environment variables (e.g. `ConnectionStrings__PROD_CustomerDB_BE`) — recommended for server deployments
+3. Azure Key Vault (referenced via `appsettings.json` Key Vault provider) — recommended for production
+
+Connection strings are **never stored in `environments.json`** and never sent to the browser.
+
 ---
 
 ## 5. Architecture
 
 ```
-Browser (Blazor WASM via SignalR)
+Browser (HTML rendered server-side, kept in sync via SignalR)
         ↕
 ASP.NET Core / Blazor Server
   ├── Auth Middleware        → Azure AD / Microsoft Entra ID (MSAL)
@@ -155,10 +190,11 @@ Accessible via the top nav (Admin role only):
 - **Manage Queries** — list of all queries with status (Active/Disabled); inline edit form with:
   - Display name, description, allowed environments
   - SQL editor with `@ParameterName` syntax
-  - Parameter editor: add/remove parameters, set SQL name, user label, input type, required flag
-  - "Save to config" writes back to `queries.json`
-  - "Reload Config" hot-reloads without restart
-- **Environments** — view configured environments and databases (connection strings masked)
+  - Parameter editor: add/remove parameters, set SQL name, user label, input type, required flag, and dropdown options
+  - "Save to config" writes back to `queries.json` (atomic write)
+  - **Delete behavior:** deleting a query sets `enabled: false` (soft delete) rather than removing it from the file, preserving history. A separate "Remove permanently" action does a hard delete.
+  - "Reload Config" hot-reloads `queries.json` **and** `environments.json` from disk (admin-triggered only; file-system watching via `IOptionsMonitor` is **disabled** to prevent unintended PROD config changes). In-flight query executions at the time of reload complete against the previous config.
+- **Environments** — view configured environments and databases (connection strings masked, showing only the key name)
 
 ---
 
@@ -180,9 +216,13 @@ Accessible via the top nav (Admin role only):
 | SQL injection | Parameterized queries only, no dynamic SQL |
 | Accidental PROD writes | Read-only DB user per environment |
 | Unauthorized access | Microsoft Entra ID auth required |
-| Sensitive config exposure | Connection strings in server-side config only, never sent to browser |
+| Sensitive config exposure | Connection strings resolved server-side from env vars / Key Vault; never in `environments.json`; never sent to browser |
 | Running wrong environment | PROD warning banner; environment clearly shown in step bar throughout |
-| Runaway queries | Query timeout configured per environment (default: 30s) |
+| Runaway queries | Query timeout: 30s (configurable per environment in `environments.json`) |
+| `allowedEnvironments` bypass | Enforced **server-side** before execution — the backend checks the query's `allowedEnvironments` against the requested environment; UI filtering alone is not sufficient |
+| Dropdown value tampering | Server-side validation: submitted dropdown value must exist in the query's configured `options` list |
+| Large result sets | Hard cap of **10,000 rows** per query execution. If the result exceeds 10,000 rows, execution is truncated and a warning banner is shown. Export generates from the already-fetched in-memory result (no re-execution) |
+| User with no assigned role | Authenticated users with neither `SQLTool.User` nor `SQLTool.Admin` role are redirected to a dedicated "Access Denied" page with instructions to contact their administrator |
 
 ---
 

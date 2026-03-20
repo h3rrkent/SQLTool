@@ -1,0 +1,176 @@
+@* SQLTool/Components/Pages/Home.razor *@
+@page "/"
+@attribute [Authorize(Policy = "UserPolicy")]
+@rendermode InteractiveServer
+@using SQLTool.Models
+@using SQLTool.Services
+@inject IConfigService ConfigService
+@inject IQueryEngine QueryEngine
+
+<PageTitle>SQLTool</PageTitle>
+
+<div class="home-layout">
+    <!-- LEFT SIDEBAR -->
+    <div class="panel">
+        <!-- Environment -->
+        <div class="panel-section">
+            <div class="panel-label">Environment</div>
+            <div class="env-buttons">
+                @foreach (var env in _environments)
+                {
+                    var isProd = env.Name.Equals("PROD", StringComparison.OrdinalIgnoreCase);
+                    <button class="env-btn @(_selectedEnv?.Name == env.Name ? "active" : "") @(isProd ? "prod" : "")"
+                            @onclick="() => SelectEnvironment(env)">
+                        @env.Name
+                    </button>
+                }
+            </div>
+        </div>
+
+        <!-- Database -->
+        @if (_selectedEnv is not null)
+        {
+            <div class="panel-section">
+                <div class="panel-label">Database</div>
+                <DatabaseSelector Databases="@_selectedEnv.Databases" SelectedId="@_selectedDb?.Id"
+                                  OnSelect="SelectDatabase" />
+            </div>
+        }
+
+        <!-- Queries -->
+        @if (_selectedDb is not null)
+        {
+            <div class="panel-section">
+                <div class="panel-label">Queries</div>
+                <QuerySelector Queries="@_queries" SelectedId="@_selectedQuery?.Id" OnSelect="SelectQuery" />
+            </div>
+        }
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+        @if (_selectedQuery is null)
+        {
+            <div class="panel panel-section" style="color: #9ca3af; font-size: .9rem;">
+                @if (_selectedEnv is null)
+                {
+                    <p>← Select an environment to get started.</p>
+                }
+                else if (_selectedDb is null)
+                {
+                    <p>← Select a database.</p>
+                }
+                else
+                {
+                    <p>← Select a query to run.</p>
+                }
+            </div>
+        }
+        else
+        {
+            <!-- Parameters & Run -->
+            <div class="panel">
+                <div class="panel-section">
+                    <div class="panel-label">@_selectedQuery.Name</div>
+                    @if (!string.IsNullOrEmpty(_selectedQuery.Description))
+                    {
+                        <p style="font-size:.875rem; color:#6b7280; margin-bottom:.75rem;">@_selectedQuery.Description</p>
+                    }
+                    <ProdWarningBanner Show="@(_selectedEnv!.Name.Equals("PROD", StringComparison.OrdinalIgnoreCase))" />
+                    @if (_selectedQuery.Parameters.Any())
+                    {
+                        <ParameterForm Parameters="@_selectedQuery.Parameters" @bind-Values="_paramValues" />
+                    }
+                    @if (_validationErrors.Any())
+                    {
+                        <ul class="validation-errors">
+                            @foreach (var e in _validationErrors) { <li>@e</li> }
+                        </ul>
+                    }
+                    <button class="run-btn" @onclick="RunQuery" disabled="@_isRunning">
+                        &#9658; @(_isRunning ? "Running..." : "Run Query")
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results -->
+            @if (_queryResult is not null)
+            {
+                <div class="panel">
+                    <div class="panel-section">
+                        <ResultsTable Result="_queryResult" QueryName="@(_selectedQuery?.Name ?? "results")" />
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<EnvironmentConfig> _environments = new();
+    private EnvironmentConfig? _selectedEnv;
+    private DatabaseEntry? _selectedDb;
+    private List<SQLTool.Models.QueryDefinition> _queries = new();
+    private SQLTool.Models.QueryDefinition? _selectedQuery;
+    private List<SQLTool.Models.ParameterValue> _paramValues = new();
+    private List<string> _validationErrors = new();
+    private bool _isRunning = false;
+    private SQLTool.Models.QueryResult? _queryResult;
+
+    protected override void OnInitialized()
+    {
+        _environments = ConfigService.GetEnvironments().ToList();
+    }
+
+    private void SelectEnvironment(EnvironmentConfig env)
+    {
+        if (_selectedEnv?.Name == env.Name) return;
+        _selectedEnv = env;
+        _selectedDb = null;
+        _queries = new();
+        _selectedQuery = null;
+        _paramValues = new();
+        _validationErrors = new();
+        _queryResult = null;
+    }
+
+    private void SelectDatabase(DatabaseEntry db)
+    {
+        _selectedDb = db;
+        _queries = ConfigService.GetQueries()
+            .Where(q => q.AllowedEnvironments.Contains(_selectedEnv!.Name, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+        _selectedQuery = null;
+        _paramValues = new();
+        _validationErrors = new();
+        _queryResult = null;
+    }
+
+    private void SelectQuery(SQLTool.Models.QueryDefinition q)
+    {
+        _selectedQuery = q;
+        _paramValues = new();
+        _validationErrors = new();
+        _queryResult = null;
+    }
+
+    private async Task RunQuery()
+    {
+        _validationErrors = new();
+        var validation = QueryEngine.ValidateParameters(_selectedQuery!, _paramValues);
+        if (!validation.IsValid)
+        {
+            _validationErrors = validation.Errors;
+            return;
+        }
+        if (!_selectedQuery!.AllowedEnvironments.Contains(_selectedEnv!.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            _validationErrors = new() { "This query is not allowed in the selected environment." };
+            return;
+        }
+        _isRunning = true;
+        StateHasChanged();
+        _queryResult = await QueryEngine.ExecuteAsync(_selectedQuery!, _selectedDb!, _paramValues);
+        _isRunning = false;
+    }
+}

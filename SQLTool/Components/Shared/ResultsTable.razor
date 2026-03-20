@@ -1,0 +1,56 @@
+@* SQLTool/Components/Shared/ResultsTable.razor *@
+@using SQLTool.Models
+@inject SQLTool.Services.IExportService ExportService
+@inject IJSRuntime JS
+
+@if (Result is null) { return; }
+
+<div class="results-header">
+    <span class="row-count">
+        @(Result.Truncated ? "10,000+" : Result.TotalRowCount.ToString()) rows
+        @if (Result.Truncated)
+        {
+            <span class="truncated-warning">⚠️ Showing first 10,000 rows only</span>
+        }
+        — @Result.ElapsedMilliseconds ms
+    </span>
+    <div class="export-buttons">
+        <button @onclick="ExportCsv">Export CSV</button>
+        <button @onclick="ExportExcel">Export Excel</button>
+    </div>
+</div>
+
+<div class="results-table-wrap">
+    <table class="results-table">
+        <thead>
+            <tr>@foreach (var col in Result.Columns) { <th>@col</th> }</tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Result.Rows)
+            {
+                <tr>@foreach (var col in Result.Columns) { <td>@row.GetValueOrDefault(col)?.ToString()</td> }</tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter] public QueryResult? Result { get; set; }
+    [Parameter] public string QueryName { get; set; } = "results";
+
+    private async Task ExportCsv()
+    {
+        if (Result is null) return;
+        var csv = ExportService.ToCsv(Result);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
+        await JS.InvokeVoidAsync("downloadFile", $"{QueryName}.csv", "text/csv", bytes);
+    }
+
+    private async Task ExportExcel()
+    {
+        if (Result is null) return;
+        var bytes = ExportService.ToExcel(Result, QueryName);
+        await JS.InvokeVoidAsync("downloadFile", $"{QueryName}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes);
+    }
+}
