@@ -1,5 +1,6 @@
 // SQLTool/Services/QueryEngine.cs
 using System.Diagnostics;
+using System.Globalization;
 using Dapper;
 using Microsoft.Data.SqlClient;
 using SQLTool.Models;
@@ -36,7 +37,7 @@ public class QueryEngine : IQueryEngine
                         result.Errors.Add($"{param.Label} must be a valid date (yyyy-MM-dd).");
                     break;
                 case "number":
-                    if (!decimal.TryParse(raw, out var num))
+                    if (!decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var num))
                         result.Errors.Add($"{param.Label} must be a number.");
                     else
                     {
@@ -89,7 +90,7 @@ public class QueryEngine : IQueryEngine
             {
                 Rows = rows,
                 Columns = columns,
-                TotalRowCount = rows.Count,
+                TotalRowCount = truncated ? RowLimit + 1 : rows.Count,
                 Truncated = truncated,
                 ElapsedMilliseconds = sw.ElapsedMilliseconds
             };
@@ -107,7 +108,7 @@ public class QueryEngine : IQueryEngine
         return param.Type switch
         {
             "date" => DateOnly.TryParseExact(raw, "yyyy-MM-dd", out var d) ? d.ToDateTime(TimeOnly.MinValue) : null,
-            "number" => decimal.TryParse(raw, out var n) ? n : null,
+            "number" => decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var n) ? n : null,
             "boolean" => raw.Equals("true", StringComparison.OrdinalIgnoreCase),
             _ => raw
         };
