@@ -1,6 +1,7 @@
 @* SQLTool/Components/Pages/Home.razor *@
 @page "/"
 @attribute [Authorize(Policy = "UserPolicy")]
+@rendermode InteractiveServer
 @using SQLTool.Models
 @using SQLTool.Services
 @inject IConfigService ConfigService

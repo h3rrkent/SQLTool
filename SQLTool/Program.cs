@@ -1,14 +1,18 @@
 // SQLTool/Program.cs
-using Microsoft.Identity.Web;
-using Microsoft.Identity.Web.UI;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using SQLTool.Components;
 using SQLTool.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Auth
-builder.Services.AddMicrosoftIdentityWebAppAuthentication(builder.Configuration, "AzureAd");
-builder.Services.AddControllersWithViews().AddMicrosoftIdentityUI();
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/login";
+        options.AccessDeniedPath = "/access-denied";
+    });
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("UserPolicy", p => p.RequireRole("SQLTool.User", "SQLTool.Admin"));
@@ -25,6 +29,7 @@ builder.Services.AddScoped<IExportService, ExportService>();
 // Blazor
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
@@ -40,7 +45,12 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
-app.MapControllers();
+app.MapRazorPages();
+app.MapGet("/logout", async (HttpContext ctx) =>
+{
+    await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    return Results.Redirect("/login");
+}).AllowAnonymous();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

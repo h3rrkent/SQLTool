@@ -1,6 +1,7 @@
 @* SQLTool/Components/Pages/Admin/ManageQueries.razor *@
 @page "/admin/queries"
 @attribute [Authorize(Policy = "AdminPolicy")]
+@rendermode InteractiveServer
 @using SQLTool.Models
 @using SQLTool.Services
 @inject IConfigService ConfigService
