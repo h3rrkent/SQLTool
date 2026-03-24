@@ -43,36 +43,40 @@
         }
     </div>
 
-    @if (_editingId == q.Id)
+    @if (_editing is { } session && session.Draft.Id == q.Id)
     {
         <div class="edit-form">
+            @if (_editErrors is not null)
+            {
+                <div class="edit-errors">@_editErrors</div>
+            }
             <div class="form-row">
                 <label>Display Name</label>
-                <input @bind="_draft!.Name" />
+                <input @bind="session.Draft.Name" />
             </div>
             <div class="form-row">
                 <label>Description</label>
-                <input @bind="_draft!.Description" />
+                <input @bind="session.Draft.Description" />
             </div>
             <div class="form-row">
                 <label>Allowed Environments</label>
                 @foreach (var env in _allEnvNames)
                 {
-                    <label><input type="checkbox" checked="@_draft!.AllowedEnvironments.Contains(env)"
+                    <label><input type="checkbox" checked="@session.Draft.AllowedEnvironments.Contains(env)"
                                   @onchange="e => ToggleEnv(env, (bool)(e.Value ?? false))" /> @env</label>
                 }
             </div>
             <div class="form-row">
                 <label>SQL</label>
-                <textarea @bind="_draft!.Sql" rows="5"></textarea>
+                <textarea @bind="session.Draft.Sql" rows="5"></textarea>
                 <small>Use @@ParameterName for parameters</small>
             </div>
             <div class="params-editor">
                 <h4>Parameters <button @onclick="AddParam">+ Add</button></h4>
-                @for (var i = 0; i < _draft!.Parameters.Count; i++)
+                @for (var i = 0; i < session.Draft.Parameters.Count; i++)
                 {
                     var idx = i;
-                    var p = _draft.Parameters[idx];
+                    var p = session.Draft.Parameters[idx];
                     <div class="param-row">
                         <input placeholder="SQL Name (e.g. StartDate)" @bind="p.Name" />
                         <input placeholder="Label (shown to user)" @bind="p.Label" />
@@ -89,8 +93,8 @@
                             <div class="dropdown-opts">
                                 <small>Options (value:label, one per line)</small>
                                 <textarea rows="3"
-                                          value="@_dropdownOptionsText.GetValueOrDefault(idx, "")"
-                                          @onchange="e => { _dropdownOptionsText[idx] = e.Value?.ToString() ?? string.Empty; SyncDropdownOptions(idx); }"></textarea>
+                                          value="@session.DropdownText.GetValueOrDefault(idx, "")"
+                                          @onchange="e => { session.DropdownText[idx] = e.Value?.ToString() ?? string.Empty; SyncDropdownOptions(idx); }"></textarea>
                             </div>
                         }
                         <button class="danger" @onclick="() => RemoveParam(idx)">🗑</button>
@@ -105,13 +109,79 @@
     }
 }
 
+@if (_editing is { } newSession && !_allQueries.Any(q => q.Id == newSession.Draft.Id))
+{
+    <div class="edit-form">
+        @if (_editErrors is not null)
+        {
+            <div class="edit-errors">@_editErrors</div>
+        }
+        <div class="form-row">
+            <label>Display Name</label>
+            <input @bind="newSession.Draft.Name" />
+        </div>
+        <div class="form-row">
+            <label>Description</label>
+            <input @bind="newSession.Draft.Description" />
+        </div>
+        <div class="form-row">
+            <label>Allowed Environments</label>
+            @foreach (var env in _allEnvNames)
+            {
+                <label><input type="checkbox" checked="@newSession.Draft.AllowedEnvironments.Contains(env)"
+                              @onchange="e => ToggleEnv(env, (bool)(e.Value ?? false))" /> @env</label>
+            }
+        </div>
+        <div class="form-row">
+            <label>SQL</label>
+            <textarea @bind="newSession.Draft.Sql" rows="5"></textarea>
+            <small>Use @@ParameterName for parameters</small>
+        </div>
+        <div class="params-editor">
+            <h4>Parameters <button @onclick="AddParam">+ Add</button></h4>
+            @for (var i = 0; i < newSession.Draft.Parameters.Count; i++)
+            {
+                var idx = i;
+                var p = newSession.Draft.Parameters[idx];
+                <div class="param-row">
+                    <input placeholder="SQL Name (e.g. StartDate)" @bind="p.Name" />
+                    <input placeholder="Label (shown to user)" @bind="p.Label" />
+                    <select @bind="p.Type">
+                        <option value="text">Text</option>
+                        <option value="date">Date</option>
+                        <option value="number">Number</option>
+                        <option value="boolean">Yes/No</option>
+                        <option value="dropdown">Dropdown</option>
+                    </select>
+                    <label><input type="checkbox" @bind="p.Required" /> Required</label>
+                    @if (p.Type == "dropdown")
+                    {
+                        <div class="dropdown-opts">
+                            <small>Options (value:label, one per line)</small>
+                            <textarea rows="3"
+                                      value="@newSession.DropdownText.GetValueOrDefault(idx, "")"
+                                      @onchange="e => { newSession.DropdownText[idx] = e.Value?.ToString() ?? string.Empty; SyncDropdownOptions(idx); }"></textarea>
+                        </div>
+                    }
+                    <button class="danger" @onclick="() => RemoveParam(idx)">🗑</button>
+                </div>
+            }
+        </div>
+        <div class="form-actions">
+            <button @onclick="CancelEdit">Cancel</button>
+            <button class="primary" @onclick="SaveEdit">💾 Save to config</button>
+        </div>
+    </div>
+}
+
 @code {
+    private sealed record EditSession(QueryDefinition Draft, Dictionary<int, string> DropdownText);
+    private EditSession? _editing;
+
     private List<QueryDefinition> _allQueries = new();
     private List<string> _allEnvNames = new();
-    private string? _editingId;
     private string? _confirmDeleteId;
-    private QueryDefinition? _draft;
-    private Dictionary<int, string> _dropdownOptionsText = new();
+    private string? _editErrors;
 
     protected override void OnInitialized() => LoadData();
 
@@ -126,13 +196,14 @@
     private void AddNew()
     {
         var newQuery = new QueryDefinition { Id = Guid.NewGuid().ToString("N")[..8] };
-        _allQueries.Add(newQuery);
-        StartEdit(newQuery);
+        _editErrors = null;
+        _editing = new EditSession(newQuery, new Dictionary<int, string>());
     }
 
     private void StartEdit(QueryDefinition q)
     {
-        _draft = new QueryDefinition
+        _editErrors = null;
+        var draft = new QueryDefinition
         {
             Id = q.Id, Name = q.Name, Description = q.Description,
             AllowedEnvironments = new(q.AllowedEnvironments),
@@ -144,26 +215,36 @@
                 Options = new(p.Options)
             }).ToList()
         };
-        _dropdownOptionsText = _draft.Parameters
+        var dropdownText = draft.Parameters
             .Select((p, i) => (i, string.Join("\n", p.Options.Select(o => $"{o.Value}:{o.Label}"))))
             .ToDictionary(x => x.i, x => x.Item2);
-        _editingId = q.Id;
+        _editing = new EditSession(draft, dropdownText);
     }
 
-    private void CancelEdit() { _editingId = null; _draft = null; LoadData(); }
+    private void CancelEdit() { _editing = null; _editErrors = null; }
 
     private void SaveEdit()
     {
-        // Sync all dropdown options before saving
-        for (var i = 0; i < _draft!.Parameters.Count; i++)
+        if (_editing is not { } session) return;
+
+        if (string.IsNullOrWhiteSpace(session.Draft.Name) || string.IsNullOrWhiteSpace(session.Draft.Sql))
         {
-            if (_draft.Parameters[i].Type == "dropdown")
+            _editErrors = "Name and SQL are required.";
+            return;
+        }
+
+        // Sync all dropdown options before saving
+        for (var i = 0; i < session.Draft.Parameters.Count; i++)
+        {
+            if (session.Draft.Parameters[i].Type == "dropdown")
                 SyncDropdownOptions(i);
         }
-        foreach (var p in _draft!.Parameters)
+        foreach (var p in session.Draft.Parameters)
             if (p.Name.StartsWith('@')) p.Name = p.Name[1..];
-        ConfigService.SaveQuery(_draft!);
-        CancelEdit();
+
+        ConfigService.SaveQuery(session.Draft);
+        _editing = null;
+        _editErrors = null;
         LoadData();
     }
 
@@ -171,26 +252,37 @@
     private void ConfirmHardDelete(string id) { _confirmDeleteId = null; ConfigService.DeleteQuery(id, permanent: true); LoadData(); }
     private void Enable(string id) { ConfigService.EnableQuery(id); LoadData(); }
 
-    private void AddParam() { _draft!.Parameters.Add(new()); _dropdownOptionsText[_draft.Parameters.Count - 1] = ""; }
+    private void AddParam()
+    {
+        if (_editing is not { } session) return;
+        session.Draft.Parameters.Add(new());
+        session.DropdownText[session.Draft.Parameters.Count - 1] = "";
+    }
+
     private void RemoveParam(int idx)
     {
-        _draft!.Parameters.RemoveAt(idx);
+        if (_editing is not { } session) return;
+        session.Draft.Parameters.RemoveAt(idx);
         var newMap = new Dictionary<int, string>();
-        for (var i = 0; i < _draft.Parameters.Count; i++)
-            newMap[i] = _dropdownOptionsText.GetValueOrDefault(i < idx ? i : i + 1, "");
-        _dropdownOptionsText = newMap;
+        for (var i = 0; i < session.Draft.Parameters.Count; i++)
+            newMap[i] = session.DropdownText.GetValueOrDefault(i < idx ? i : i + 1, "");
+        session.DropdownText.Clear();
+        foreach (var kvp in newMap)
+            session.DropdownText[kvp.Key] = kvp.Value;
     }
 
     private void ToggleEnv(string env, bool add)
     {
-        if (add && !_draft!.AllowedEnvironments.Contains(env)) _draft.AllowedEnvironments.Add(env);
-        else if (!add) _draft!.AllowedEnvironments.Remove(env);
+        if (_editing is not { } session) return;
+        if (add && !session.Draft.AllowedEnvironments.Contains(env)) session.Draft.AllowedEnvironments.Add(env);
+        else if (!add) session.Draft.AllowedEnvironments.Remove(env);
     }
 
     private void SyncDropdownOptions(int idx)
     {
-        var lines = _dropdownOptionsText.GetValueOrDefault(idx, "").Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        _draft!.Parameters[idx].Options = lines
+        if (_editing is not { } session) return;
+        var lines = session.DropdownText.GetValueOrDefault(idx, "").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        session.Draft.Parameters[idx].Options = lines
             .Select(l => l.Split(':', 2))
             .Where(parts => parts.Length == 2)
             .Select(parts => new DropdownOption { Value = parts[0].Trim(), Label = parts[1].Trim() })

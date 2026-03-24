@@ -2,6 +2,7 @@
   "environments": [
     {
       "name": "PROD",
+      "isProd": true,
       "databases": [
         { "id": "prod-db1", "label": "CustomerDB_NL", "connectionStringKey": "PROD_CustomerDB_NL", "queryTimeoutSeconds": 30 },
         { "id": "prod-db2", "label": "CustomerDB_BE", "connectionStringKey": "PROD_CustomerDB_BE", "queryTimeoutSeconds": 30 }
