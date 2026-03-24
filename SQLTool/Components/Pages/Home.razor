@@ -18,6 +18,7 @@
             <div class="env-buttons">
                 @foreach (var env in _environments)
                 {
+                    // TODO: use env.IsProd once fix/models-configservice is merged
                     var isProd = env.Name.Equals("PROD", StringComparison.OrdinalIgnoreCase);
                     <button class="env-btn @(_selectedEnv?.Name == env.Name ? "active" : "") @(isProd ? "prod" : "")"
                             @onclick="() => SelectEnvironment(env)">
@@ -76,6 +77,7 @@
                     {
                         <p style="font-size:.875rem; color:#6b7280; margin-bottom:.75rem;">@_selectedQuery.Description</p>
                     }
+                    @* TODO: use _selectedEnv!.IsProd once fix/models-configservice is merged *@
                     <ProdWarningBanner Show="@(_selectedEnv!.Name.Equals("PROD", StringComparison.OrdinalIgnoreCase))" />
                     @if (_selectedQuery.Parameters.Any())
                     {
@@ -170,7 +172,18 @@
         }
         _isRunning = true;
         StateHasChanged();
-        _queryResult = await QueryEngine.ExecuteAsync(_selectedQuery!, _selectedDb!, _paramValues);
-        _isRunning = false;
+        try
+        {
+            _queryResult = await QueryEngine.ExecuteAsync(_selectedQuery!, _selectedDb!, _paramValues);
+        }
+        catch (Exception ex)
+        {
+            _validationErrors = new() { $"Query failed unexpectedly: {ex.Message}" };
+            _queryResult = null;
+        }
+        finally
+        {
+            _isRunning = false;
+        }
     }
 }
