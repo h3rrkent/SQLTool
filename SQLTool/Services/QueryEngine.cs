@@ -1,8 +1,10 @@
 // SQLTool/Services/QueryEngine.cs
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Dapper;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using SQLTool.Models;
 
 namespace SQLTool.Services;
@@ -11,8 +13,17 @@ public class QueryEngine : IQueryEngine
 {
     private const int RowLimit = 10_000;
     private readonly IConfigService _configService;
+    private readonly ILogger<QueryEngine> _logger;
 
-    public QueryEngine(IConfigService configService) => _configService = configService;
+    private static readonly Regex DmlDdlPattern = new(
+        @"\b(INSERT|UPDATE|DELETE|MERGE|TRUNCATE|DROP|CREATE|ALTER|EXEC|EXECUTE|xp_|sp_)\b",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    public QueryEngine(IConfigService configService, ILogger<QueryEngine> logger)
+    {
+        _configService = configService;
+        _logger = logger;
+    }
 
     public ValidationResult ValidateParameters(QueryDefinition query, List<ParameterValue> values)
     {
@@ -59,10 +70,17 @@ public class QueryEngine : IQueryEngine
 
     public async Task<QueryResult> ExecuteAsync(QueryDefinition query, DatabaseEntry database, List<ParameterValue> values)
     {
+        if (!query.AllowedEnvironments.Contains(database.EnvironmentName, StringComparer.OrdinalIgnoreCase))
+            return new QueryResult { ErrorMessage = "Query is not permitted in this environment." };
+
+        if (DmlDdlPattern.IsMatch(query.Sql))
+            return new QueryResult { ErrorMessage = "Query contains disallowed SQL keywords (DML/DDL/stored procedures)." };
+
         var connectionString = _configService.GetConnectionString(database.ConnectionStringKey);
         if (connectionString is null)
             return new QueryResult { ErrorMessage = $"Connection string '{database.ConnectionStringKey}' not configured." };
 
+        _logger.LogDebug("Executing query {QueryId} on {DatabaseKey}", query.Id, database.ConnectionStringKey);
         var sw = Stopwatch.StartNew();
         try
         {
@@ -74,11 +92,12 @@ public class QueryEngine : IQueryEngine
                 parameters.Add(p.Name, CoerceValue(p, val));
             }
 
-            var cmd = new CommandDefinition(query.Sql, parameters, commandTimeout: database.QueryTimeoutSeconds);
+            var limitedSql = $"SELECT TOP ({RowLimit + 1}) * FROM ({query.Sql}) AS __q";
+            var cmd = new CommandDefinition(limitedSql, parameters, commandTimeout: database.QueryTimeoutSeconds);
             var raw = (await conn.QueryAsync(cmd)).ToList();
             sw.Stop();
 
-            var rows = raw.Take(RowLimit + 1)
+            var rows = raw
                 .Select(r => ((IDictionary<string, object?>)r).ToDictionary(k => k.Key, k => k.Value))
                 .ToList();
 
@@ -86,6 +105,9 @@ public class QueryEngine : IQueryEngine
             if (truncated) rows = rows.Take(RowLimit).ToList();
 
             var columns = rows.FirstOrDefault()?.Keys.ToList() ?? new();
+            _logger.LogInformation("Query {QueryId} completed in {ElapsedMs}ms, {RowCount} rows, truncated={Truncated}",
+                query.Id, sw.ElapsedMilliseconds, rows.Count, truncated);
+
             return new QueryResult
             {
                 Rows = rows,
@@ -95,10 +117,18 @@ public class QueryEngine : IQueryEngine
                 ElapsedMilliseconds = sw.ElapsedMilliseconds
             };
         }
+        catch (SqlException ex)
+        {
+            sw.Stop();
+            _logger.LogError(ex, "SQL error on query {QueryId} db {DatabaseKey}. SqlErrorNumber={N}",
+                query.Id, database.ConnectionStringKey, ex.Number);
+            return new QueryResult { ErrorMessage = "A database error occurred. Contact your administrator if this persists." };
+        }
         catch (Exception ex)
         {
             sw.Stop();
-            return new QueryResult { ErrorMessage = ex.Message };
+            _logger.LogError(ex, "Unexpected error on query {QueryId} db {DatabaseKey}", query.Id, database.ConnectionStringKey);
+            return new QueryResult { ErrorMessage = "An unexpected error occurred." };
         }
     }
 
