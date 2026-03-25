@@ -1,6 +1,7 @@
 // SQLTool/Services/ConfigService.cs
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SQLTool.Models;
 
 namespace SQLTool.Services;
@@ -9,15 +10,17 @@ public class ConfigService : IConfigService
 {
     private readonly string _configDir;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<ConfigService> _logger;
     private readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase, PropertyNameCaseInsensitive = true };
     private List<QueryDefinition> _queries = new();
     private List<EnvironmentConfig> _environments = new();
     private readonly object _lock = new();
 
-    public ConfigService(string configDir, IConfiguration configuration)
+    public ConfigService(string configDir, IConfiguration configuration, ILogger<ConfigService> logger)
     {
         _configDir = configDir;
         _configuration = configuration;
+        _logger = logger;
         Reload();
     }
 
@@ -30,16 +33,35 @@ public class ConfigService : IConfigService
 
             if (File.Exists(queriesPath))
             {
-                var json = File.ReadAllText(queriesPath);
-                var root = JsonSerializer.Deserialize<QueryConfigRoot>(json, _jsonOptions);
-                _queries = root?.Queries ?? new();
+                try
+                {
+                    var json = File.ReadAllText(queriesPath);
+                    var root = JsonSerializer.Deserialize<QueryConfigRoot>(json, _jsonOptions);
+                    _queries = root?.Queries ?? new();
+                    _logger.LogInformation("Loaded {Count} queries from {Path}", _queries.Count, queriesPath);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Failed to parse {Path} — keeping previous query definitions", queriesPath);
+                }
             }
 
             if (File.Exists(envsPath))
             {
-                var json = File.ReadAllText(envsPath);
-                var root = JsonSerializer.Deserialize<EnvironmentConfigRoot>(json, _jsonOptions);
-                _environments = root?.Environments ?? new();
+                try
+                {
+                    var json = File.ReadAllText(envsPath);
+                    var root = JsonSerializer.Deserialize<EnvironmentConfigRoot>(json, _jsonOptions);
+                    _environments = root?.Environments ?? new();
+                    foreach (var env in _environments)
+                        foreach (var db in env.Databases)
+                            db.EnvironmentName = env.Name;
+                    _logger.LogInformation("Loaded {Count} environments from {Path}", _environments.Count, envsPath);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Failed to parse {Path} — keeping previous environment definitions", envsPath);
+                }
             }
         }
     }

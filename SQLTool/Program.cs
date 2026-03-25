@@ -25,7 +25,7 @@ builder.Services.AddAuthorization(options =>
 
 // Services
 var configDir = Path.Combine(builder.Environment.ContentRootPath, builder.Configuration["ConfigDir"] ?? "config");
-builder.Services.AddSingleton<IConfigService>(_ => new ConfigService(configDir, builder.Configuration));
+builder.Services.AddSingleton<IConfigService>(sp => new ConfigService(configDir, builder.Configuration, sp.GetRequiredService<ILogger<ConfigService>>()));
 builder.Services.AddScoped<IQueryEngine, QueryEngine>();
 builder.Services.AddScoped<IExportService, ExportService>();
 
