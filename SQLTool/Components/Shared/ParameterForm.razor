@@ -17,7 +17,8 @@
                        @onchange="e => SetValue(param.Name, e.Value?.ToString())" />
                 break;
             case "boolean":
-                <select @onchange="e => SetValue(param.Name, e.Value?.ToString())">
+                <select value="@GetValue(param.Name)"
+                        @onchange="e => SetValue(param.Name, e.Value?.ToString())">
                     <option value="false">No</option>
                     <option value="true">Yes</option>
                 </select>
@@ -46,18 +47,26 @@
 
     protected override void OnParametersSet()
     {
-        foreach (var param in Parameters.Where(p => p.Type == "boolean"))
-            if (!Values.Any(v => v.Name == param.Name))
-                SetValue(param.Name, "false");
+        var missing = Parameters
+            .Where(p => p.Type == "boolean" && !Values.Any(v => v.Name == p.Name))
+            .ToList();
+        if (!missing.Any()) return;
+
+        var seeded = Values.ToList();
+        foreach (var p in missing)
+            seeded.Add(new SQLTool.Models.ParameterValue { Name = p.Name, Value = "false" });
+        ValuesChanged.InvokeAsync(seeded);
     }
 
     private string? GetValue(string name) => Values.FirstOrDefault(v => v.Name == name)?.Value;
 
     private void SetValue(string name, string? value)
     {
-        var existing = Values.FirstOrDefault(v => v.Name == name);
-        if (existing is not null) existing.Value = value;
-        else Values.Add(new SQLTool.Models.ParameterValue { Name = name, Value = value });
-        ValuesChanged.InvokeAsync(Values);
+        // Copy-on-write: never mutate the incoming list in place
+        var updated = Values
+            .Where(v => v.Name != name)
+            .Append(new SQLTool.Models.ParameterValue { Name = name, Value = value })
+            .ToList();
+        ValuesChanged.InvokeAsync(updated);
     }
 }
