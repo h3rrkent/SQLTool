@@ -1,6 +1,8 @@
 // SQLTool/Program.cs
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 using SQLTool.Components;
 using SQLTool.Services;
 
@@ -21,6 +23,19 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("UserPolicy", p => p.RequireRole("SQLTool.User", "SQLTool.Admin"));
     options.AddPolicy("AdminPolicy", p => p.RequireRole("SQLTool.Admin"));
     options.FallbackPolicy = options.GetPolicy("UserPolicy");
+});
+
+// Rate limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("LoginPolicy", o =>
+    {
+        o.PermitLimit = 5;
+        o.Window = TimeSpan.FromMinutes(1);
+        o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        o.QueueLimit = 0;
+    });
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
 // Services
@@ -48,12 +63,13 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
-app.MapRazorPages();
-app.MapGet("/logout", async (HttpContext ctx) =>
+app.UseRateLimiter();
+app.MapRazorPages().RequireRateLimiting("LoginPolicy");
+app.MapPost("/logout", async (HttpContext ctx) =>
 {
     await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.Redirect("/login");
-}).AllowAnonymous();
+}).RequireAuthorization();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
