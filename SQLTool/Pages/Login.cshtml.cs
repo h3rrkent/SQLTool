@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Security.Claims;
@@ -23,11 +24,17 @@ public class LoginModel(IConfiguration configuration) : PageModel
         ReturnUrl = returnUrl ?? "/";
 
         var users = configuration.GetSection("Users").Get<List<UserConfig>>() ?? [];
-        var user = users.FirstOrDefault(u =>
-            string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase) &&
-            u.Password == password);
+        var hasher = new PasswordHasher<string>();
 
-        if (user is null)
+        // Find user by name first — prevents timing-based username enumeration
+        var user = users.FirstOrDefault(u =>
+            string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase));
+
+        // Always run hash verification (constant-time) even when user not found
+        var hashToVerify = user?.PasswordHash ?? hasher.HashPassword("", "dummy");
+        var verifyResult = hasher.VerifyHashedPassword(username ?? "", hashToVerify, password ?? "");
+
+        if (user is null || verifyResult == PasswordVerificationResult.Failed)
         {
             Error = "Invalid username or password.";
             return Page();
@@ -46,4 +53,4 @@ public class LoginModel(IConfiguration configuration) : PageModel
     }
 }
 
-public record UserConfig(string Username, string Password, List<string> Roles);
+public record UserConfig(string Username, string PasswordHash, List<string> Roles);
