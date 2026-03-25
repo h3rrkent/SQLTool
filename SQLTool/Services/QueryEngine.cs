@@ -90,7 +90,7 @@ public class QueryEngine : IQueryEngine
             {
                 Rows = rows,
                 Columns = columns,
-                TotalRowCount = truncated ? RowLimit + 1 : rows.Count,
+                RowCount = rows.Count,
                 Truncated = truncated,
                 ElapsedMilliseconds = sw.ElapsedMilliseconds
             };
